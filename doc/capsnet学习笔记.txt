@@ -215,24 +215,72 @@ capsules receives input from all the capsules in the layer below.
 第二个层（Primary Capsules）是一个卷积 capsule 层，具有 32 个通道的8D capsule（即每个卷积层包括 8 个卷积单元，每个卷积单元有一个9×9核，步幅为2）。
 每个主 capsule 输出接收到所有 256×8×1 Conv1 单元的输出，它们的感受野与 capsule 的中心位置重叠。
 PrimaryCapsules 一共有 [32, 6, 6] capsule 输出（每个输出都是一个 8D 向量），[6, 6] 网格中的每个 capsule 彼此共享权重。
+最后的层（DigitCaps）的每个数字类别都有一个16D capsule，每个 capsule 接收来自上面一层所有capsule的输入。
 
+We have routing only between two consecutive capsule layers (e.g. PrimaryCapsules and DigitCaps).
+Since Conv1 output is 1D, there is no orientation in its space to agree on. Therefore, no routing is used
+between Conv1 and PrimaryCapsules. All the routing logits (bij ) are initialized to zero. Therefore,
+initially a capsule output (ui) is sent to all parent capsules (v0...v9) with equal probability (cij ).
+Our implementation is in TensorFlow (Abadi et al. [2016]) and we use the Adam optimizer (Kingma
+and Ba [2014]) with its TensorFlow default parameters, including the exponentially decaying learning
+rate, to minimize the sum of the margin losses in Eq. 4.
+路由选择算法只在两个连续的 capsule 层之间执行（如 PrimaryCapsules 和 DigitCaps）。
+Conv1 的输出是 1D 的，无法对其空间进行定位。
+因此 Conv1 和 PrimaryCapsules 之间无法进行路由选择。
+所有路由选择bij都要被初始化为0。
+因此最初 胶囊 输出的ui以同样的概率cij被发送至下一层capsules。
+我们的实现在TensorFlow中，我们使用Adam优化器及其TensorFlow默认参数，包括指数衰减学习效率，以使等式中的保证金损失总和最小化。
 
+4.1 Reconstruction as a regularization method
+正则化法-重构
 
+We use an additional reconstruction loss to encourage the digit capsules to encode the instantiation
+parameters of the input digit. During training, we mask out all but the activity vector of the correct
+digit capsule. Then we use this activity vector to reconstruct the input image. The output of the digit
+capsule is fed into a decoder consisting of 3 fully connected layers that model the pixel intensities as
+described in Fig. 2. We minimize the sum of squared differences between the outputs of the logistic
+units and the pixel intensities. We scale down this reconstruction loss by 0.0005 so that it does not
+dominate the margin loss during training. As illustrated in Fig. 3 the reconstructions from the 16D
+output of the CapsNet are robust while keeping only important details.
+我们使用额外的损失重构技术 鼓励数字胶囊 编码 实例化输入参数
+训练期间   我们掩盖 所有非正确胶囊输出的活动矢量 
+胶囊被送入由3个全连接层组成的解码器，这些层将像素强度建模如图2 显示。
+把（logistic units ，pixel intensities ）之间平方差之和最小化
+按0.0005 的比例缩小重构损失，以使它不会主导训练过程中的边际损失。
 
+Q全连接层？
+Q训练过程的损失有哪些成分组成？
 
+Capsules on MNIST
+Training is performed on 28 × 28 MNIST (LeCun et al. [1998]) images that have been shifted by up
+to 2 pixels in each direction with zero padding. No other data augmentation/deformation is used. The
+dataset has 60K and 10K images for training and testing respectively.
+基于MNIST的训练图像再每个方向上都最多移动了2个像素，不使用其他数据扩充/变形
+数据集包含60k和10k的图像分别用于训练和测试
 
+We test using a single model without any model averaging. Wan et al. [2013] achieves 0.21% test
+error with ensembling and augmenting the data with rotation and scaling. They achieve 0.39%
+without them. We get a low test error (0.25%) on a 3 layer network previously only achieved by
+deeper networks. Tab. 1 reports the test error rate on MNIST for different CapsNet setups and shows
+the importance of routing and reconstruction regularizer. Adding the reconstruction regularizer boosts
+the routing performance by enforcing the pose encoding in the capsule vector.
+再胶囊的输出向量上强制进行姿态编 提高了 码路由routing 和正则化（regularizer）的正确性
 
+The baseline is a standard CNN with three convolutional layers of 256, 256, 128 channels. Each has
+5x5 kernels and stride of 1. The last convolutional layers are followed by two fully connected layers
+of size 328, 192. 
+The last fully connected layer is connected with dropout to a 10 class softmax layer 
+with cross entropy loss. The baseline is also trained on 2-pixel shifted MNIST with Adam optimizer.
+The baseline is designed to achieve the best performance on MNIST while keeping the computation
+cost as close as to CapsNet. In terms of number of parameters the baseline has 35.4M while CapsNet
+has 8.2M parameters and 6.8M parameters without the reconstruction subnetwork.
 
-
-
-
-
-
-
-
-
-
-
+基线是具有256、256、128通道三个卷积层的标准CNN。每个都有5x5内核，步幅为1。
+最后的卷积层后面是两个完全连接的层的大小为328、192。
+最后一个完全连接的层（with dropout）连接到( 10 class softmax)层交叉熵损失(cross entropy loss)？？？
+还使用Adam优化器在2像素移位的MNIST上训练了基线。
+基线 旨在 在MNIST上实现最佳性能的同时 保持计算性能消耗和Capsnet解决
+就参数数量而言，基线为35.4M，而CapsNet无需重建子网即可拥有8.2M个参数和6.8M个参数。
 
 
 
