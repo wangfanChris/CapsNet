@@ -1,0 +1,239 @@
+渲染    计算机图形学，基于几何数据内部的分层表示，构造可视化图像。
+        这类表示的结构需要考虑对象的相对位置。这些内部表示存储在计算机内存中。
+        几何化的对象以数组表示，对象间的相对位置和朝向以矩阵表示。
+        接着，特定的软件接受这些表示作为输入，并将它们转化为屏幕上的图像。这叫渲染。
+
+        大脑做的和渲染正好相反，把这个叫做逆图形，从眼睛接收到的视觉信息中，大脑解析出我们周围世界的分层表示，
+        并尝试匹配已学习到的模式和存储在大脑中的关系。辨识就是这样进行的。关键的想法是大脑中物体的表示并不依赖于视角
+
+        在三维图形中，三维对象之间的关系可以用位姿表示，位姿的本质是平移和旋转
+
+        胶囊理论结合了对象之间的相对关系，在数值表示为4维位姿矩阵。
+
+        （脑中的物体内部表示并不依赖视角）
+
+        胶囊方法相比CNN需要的数据集小得多。
+
+概述：
+A capsule is a group of neurons whose activity vector represents the instantiation parameters of a specific type of entity（实体） such as an object or an object part.
+    胶囊是一组神经元，胶囊中激活的向量表示特定类型实体比如对象和实例的参数。
+We use the length of the activity vector to represent the probability that the entity exists and its orientation to represent the instantiation parameters. 
+    我们使用激活的向量的 长度表示实体存在的概率，方向表示实体参数
+Active capsules at one level make predictions, via transformation matrices, for the instantiation parameters of higher-level capsules. 
+    在一个级别上被激活的胶囊，通过矩阵变换，对更高层次的实例参数进行预测
+When multiple predictions agree, a higher level capsule becomes active. 
+    当多个预测意见统一，高层次的胶囊将被激活
+We show that a discrimininatively trained, multi-layer capsule system achieves state-of-the-art performance on MNIST and is considerably better than a convolutional
+     net at recognizing highly overlapping digits.
+    一个实现在MNIST上的多层次的胶囊系统 在识别高重叠数字时候 表现比卷积网络好得多
+To achieve these results we use an interative routing-by-agreement mechanism: A lower-level capsule prefers to send its output to higher level capsules whose activity 
+    vectors have a big scalar product with the prediction coming from the lower-level capsule.
+    我们使用了一种路由迭代器去实现此结果：一个低级胶囊 更倾向于 发送它的结果去那些 能产生更大saclar product（标量结果？）的高级胶囊中去。这个过程由低级胶囊自主判断
+
+    注释：
+    从概述里面可以总结以下：
+    胶囊是一群神经元。高层胶囊探测更大的复杂物体，
+    胶囊输出是一个向量，长度表示物体存在概率，方向记录物体姿态参数。
+
+介绍：
+Human vision ignores irrelevant details by using a carefully determined sequence of fixation points
+to ensure that only a tiny fraction of the optic array is ever processed at the highest resolution.
+Introspection is a poor guide to understanding how much of our knowledge of a scene comes from
+the sequence of fixations and how much we glean from a single fixation, but in this paper we will
+assume that a single fixation gives us much more than just a single identified object and its properties.
+We assume that our multi-layer visual system creates a parse tree-like structure on each fixation, and
+we ignore the issue of how these single-fixation parse trees are coordinated over multiple fixations.
+
+人类视觉通过聚焦于确定的固定点，并忽略其他不相关的细节，以确保只对极小部分的光学影像以最高分辨率进行处理。
+在本文中，我们将假设单个注视点给我们提供的信息不仅仅是简单的识别的对象，或获得其属性。
+我们假设我们的多层视觉系统在每个注视点上创建了一个类似于树状结构的解析结构，
+并且我们忽略了这些单注视点解析树如何在多个注视点上进行协调的问题。
+
+Parse trees are generally constructed on the fly by dynamically allocating memory. Following Hinton
+et al. [2000], however, we shall assume that, for a single fixation, a parse tree is carved out of a fixed
+multilayer neural network like a sculpture is carved from a rock. Each layer will be divided into many
+small groups of neurons called “capsules” (Hinton et al. [2011]) and each node in the parse tree will
+correspond to an active capsule. Using an iterative routing process, each active capsule will choose a
+capsule in the layer above to be its parent in the tree. For the higher levels of a visual system, this
+iterative process will be solving the problem of assigning parts to wholes.
+
+分析书动过动态构建内存，继hinton的研究假设：对于单一固定点，胶囊是在多层神经网络中通过训练生成的。
+每层被分为多个 “胶囊”神经元。且分析树种的每个节点对应一个活跃的胶囊。
+通过路由迭代，每个激活的胶囊会选择上层胶囊作为其父节点。
+对于视觉系统的高层次来说，这种迭代过程可以解决 由图像的部分到整体认知的过程。
+
+The activities of the neurons within an active capsule represent the various properties of a particular
+entity that is present in the image. These properties can include many different types of instantiation
+parameter such as pose (position, size, orientation), deformation, velocity, albedo, hue, texture, etc.
+One very special property is the existence of the instantiated entity in the image. An obvious way to
+represent existence is by using a separate logistic unit whose output is the probability that the entity
+exists. In this paper we explore an interesting alternative which is to use the overall length of the
+vector of instantiation parameters to represent the existence of the entity and to force the orientation
+of the vector to represent the properties of the entity1. We ensure that the length of the vector output
+of a capsule cannot exceed 1 by applying a non-linearity that leaves the orientation of the vector
+unchanged but scales down its magnitude.
+
+活动胶囊内神经元的活动表示图像中存在的特定实体的各种属性。
+这些属性可以包括许多不同类型的实例化参数，例如姿势（位置，大小，方向），变形，速度，反射率，色调，纹理等。（颜色？）
+一个非常特殊的属性是图像中实例化实体的存在。
+一个单独的逻辑单元通过输出实体存在的概率来表示实体存在性。
+在本文中，我们探索了一个有趣的替代方法，即使用实例化参数向量的全部长度来表示实体的存在（概率），并规定向量的方向来表示实体的属性。
+我们通过 非线性函数（此函数剥离向量的方向变化，但规模大小变化不大） 确定向量的长度不能超过一
+
+The fact that the output of a capsule is a vector makes it possible to use a powerful dynamic routing
+mechanism to ensure that the output of the capsule gets sent to an appropriate parent in the layer
+above. Initially, the output is routed to all possible parents but is scaled down by coupling coefficients
+that sum to 1. For each possible parent, the capsule computes a “prediction vector” by multiplying its
+own output by a weight matrix. If this prediction vector has a large scalar product with the output of
+a possible parent, there is top-down feedback which increases the coupling coefficient for that parent
+and decreasing it for other parents. This increases the contribution that the capsule makes to that
+parent thus further increasing the scalar product of the capsule’s prediction with the parent’s output.
+This type of “routing-by-agreement” should be far more effective than the very primitive form of
+routing implemented by max-pooling, which allows neurons in one layer to ignore all but the most
+active feature detector in a local pool in the layer below. We demonstrate that our dynamic routing
+mechanism is an effective way to implement the “explaining away” that is needed for segmenting
+highly overlapping objects.
+
+由于胶囊的输出是矢量，因此可以使用强大的动态路由机制来确保胶囊的输出被发送到上述层中的适当父代。
+最初，输出被路由到所有可能的父母结点，但是通过可以控制上下层次之间每对父子结点的系数的总和为1，可以达到动态路由的目的。
+对于每个可能的父亲，胶囊通过将其自身的输出乘以权重矩阵来计算“预测向量”。
+如果某个合适的父节点得到一个大的标量输出，那么就会有自上而下的反馈，这会增加该父亲的耦合系数，并减小其余父结点的耦合系数。
+这增加了胶囊对该父母的贡献，从而进一步增加了胶囊与父母输出的预测的标量乘积。
+这种类型的“通过协议路由”应该比由max-pooling实现的非常原始的路由形式更有效，这保证了一层中的神经元关注于下层中的最活跃的特征，同时忽略其他非活跃特征。
+我我们的动态路由机制是分割高度重叠对象的“可解释”的有效方式。
+
+Convolutional neural networks (CNNs) use translated replicas of learned feature detectors. This
+allows them to translate knowledge about good weight values acquired at one position in an image
+to other positions. This has proven extremely helpful in image interpretation. Even though we are
+replacing the scalar-output feature detectors of CNNs with vector-output capsules and max-pooling
+with routing-by-agreement, we would still like to replicate learned knowledge across space. To
+achieve this, we make all but the last layer of capsules be convolutional. As with CNNs, we make
+higher-level capsules cover larger regions of the image. Unlike max-pooling however, we do not throw
+away information about the precise position of the entity within the region. For low level capsules,
+location information is “place-coded” by which capsule is active. As we ascend the hierarchy,
+more and more of the positional information is “rate-coded” in the real-valued components of the
+output vector of a capsule. This shift from place-coding to rate-coding combined with the fact that
+higher-level capsules represent more complex entities with more degrees of freedom suggests that the
+dimensionality of capsules should increase as we ascend the hierarchy.
+卷积神经网络（CNN）学习特征检测器（滤波器）的   ????   。
+这使得神经网络可以通过检测图片中的各种位置的特征，去训练自身的权重值。
+这已被证明对图像解释非常有帮助。
+但是，我们还是进行了CNN的改动，使用向量形式的输出替代了CNN中的标量输出；使用rooting-by-agreement代替了下采样maxpooling操作。
+但我们仍然希望像神经网络一样，可以跨空间提取和复制已知的特征。
+为了达到这个目的，我们除了最后一层胶囊之外都是卷积式的。
+与CNN一样，我们使高层级的胶囊去处理图像的较大区域。
+然而，与最大池化不同，我们不会丢弃有关区域内实体的准确位置的信息。
+对于低层级的胶囊，位置信息是胶囊处于活动状态的“地点编码”。（限制低级胶囊的活动区域？）
+随着层级的提升，越来越多的低层级位置信息在胶囊的输出向量中以实值被计算为“速率编码”。（表示胶囊为某一实体的概率？）
+从地点编码到速率编码的这种转变，再加上更高级别的胶囊代表了更多自由度更高的实体，这表明胶囊的维数应随着我们升级而增加。
+
+Q:卷积需要去看 数字图像处理；
+Q:最大化池 = 按区域选取最大权重的数据？背后的思想和做法有待深究
+Q:胶囊的划分是以什么为依据的呢
+Q:胶囊的维数是什么意思？是指胶囊输出向量的维数么？这个输出是我们先前定义的？
+
+2 How the vector inputs and outputs of a capsule are computed
+如何组织计算胶囊的矢量输出输入
+
+There are many possible ways to implement the general idea of capsules. The aim of this paper is not
+to explore this whole space but simply to show that one fairly straightforward implementation works
+well and that dynamic routing helps.
+本文表明一个相当简单的实现就能很好的工作，且动态路由再此起到很大作用
+
+We want the length of the output vector of a capsule to represent the probability that the entity
+represented by the capsule is present in the current input. We therefore use a non-linear "squashing"
+function to ensure that short vectors get shrunk to almost zero length and long vectors get shrunk to a
+length slightly below 1. We leave it to discriminative learning to make good use of this non-linearity.
+我们希望胶囊的输出向量长度表示 胶囊代表实体在当前实体种的概率。
+因此我们使用非线性的squashing函数确保短矢量缩接近0，长矢量接近1
+我们将其留带 判别式学习 种使用，以充分利用非线性规律
+
+Qwhat is discriminative learning 判别式学习？
+
+公式 
+
+/*****************************
+补充知识： 
+向量的范数是一种用来刻画向量大小的一种度量。实数的绝对值，复数的模，三维空间向量的长度，都是抽象范数概念的原型。
+上述三个对象统一记为 x ，衡量它们大小的量记为 ||x|| （单竖线|x|表示绝对值，双竖线||x||表示范数），显然它们满足以下三条性质：
+设映射 ||.||:C^n ->R满足：
+正定性 ||x|| >= 0, 当且仅当x=0时，||x|| = 0
+齐次性 || λx || = |λ| * || x|| 
+三角不等式 || x+y || <= || x || + || y ||
+则称映射||.||为C^n上向量x的范数
+
+此知识点属于矩阵论中第八讲内容，待购书到手中再回头研究此问题
+******************************/
+
+
+3Margin loss for digit existence
+数值中存在的余量损失
+We are using the length of the instantiation vector to represent the probability that a capsule’s entity
+exists. We would like the top-level capsule for digit class k to have a long instantiation vector if and
+only if that digit is present in the image. To allow for multiple digits, we use a separate margin loss,
+Lk for each digit capsule, k
+
+我们使用实例化的向量长度表示胶囊实体存在的概率。
+希望类k的顶层胶囊只有再图像中存在该数字时，才具有长实例化矢量。
+为了允许多个数字，我们对于每个胶囊k使用单独的余量损失Lk函数，计算公式3：
+
+where Tk = 1 iff a digit of class k is present^3 and m+ = 0.9 and m− = 0.1. The λ down-weighting
+of the loss for absent digit classes stops the initial learning from shrinking the lengths of the activity
+vectors of all the digit capsules. We use λ = 0.5. The total loss is simply the sum of the losses of all digit capsules
+其中如果存在k类，那么Tk=1，且m+=0.9且m-=0.1
+对于缺少数字类别的损失，λ的下调权重会阻止 初始化学习 缩小（所有数字胶囊的活动向量的）长度。 
+我们实际使用λ = 0.5。
+总损失是所有数字胶囊损失之和
+
+
+4 CapsNet architecture
+
+A simple CapsNet architecture is shown in Fig. 1. The architecture is shallow with only two
+convolutional layers and one fully connected layer. Conv1 has 256, 9 × 9 convolution kernels with a
+stride of 1 and ReLU activation. This layer converts pixel intensities to the activities of local feature
+detectors that are then used as inputs to the primary capsules.
+一个简单的CapsNet架构如图1所示。该架构很浅，只有两个卷积层和一个全连接层。
+Conv1有256个9×9卷积核，步幅为1，带有ReLU激活。
+该层将像素强度（pixel intensity）转换成局部特征检测器的活动，然后作为输入传送至主 capsule 中。
+
+The primary capsules are the lowest level of multi-dimensional entities and, from an inverse graphics
+perspective, activating the primary capsules corresponds to inverting the rendering process. This is a
+very different type of computation than piecing instantiated parts together to make familiar wholes,
+which is what capsules are designed to be good at.
+第一层的卷积层是最低级别的多维实体，从逆向图（inversegraphics）的角度来看，激活该层对应的是逆转渲染过程（rendering process）。
+这和将多个实例化部分拼合起来组成一个整体有所不同。
+
+The second layer (PrimaryCapsules) is a convolutional capsule layer with 32 channels of convolutional
+8D capsules (i.e. each primary capsule contains 8 convolutional units with a 9 × 9 kernel and a stride
+of 2). Each primary capsule output sees the outputs of all 256 × 81 Conv1 units whose receptive
+fields overlap with the location of the center of the capsule. In total PrimaryCapsules has [32 × 6 × 6]
+capsule outputs (each output is an 8D vector) and each capsule in the [6 × 6] grid is sharing their
+weights with each other. One can see PrimaryCapsules as a Convolution layer with Eq. 1 as its block
+non-linearity. The final Layer (DigitCaps) has one 16D capsule per digit class and each of these
+capsules receives input from all the capsules in the layer below.
+
+第二个层（Primary Capsules）是一个卷积 capsule 层，具有 32 个通道的8D capsule（即每个卷积层包括 8 个卷积单元，每个卷积单元有一个9×9核，步幅为2）。
+每个主 capsule 输出接收到所有 256×8×1 Conv1 单元的输出，它们的感受野与 capsule 的中心位置重叠。
+PrimaryCapsules 一共有 [32, 6, 6] capsule 输出（每个输出都是一个 8D 向量），[6, 6] 网格中的每个 capsule 彼此共享权重。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
